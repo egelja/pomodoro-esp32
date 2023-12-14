@@ -1,0 +1,11 @@
+#pragma once
+
+#define __IP(a, b, c, d) a, b, c, d // Bit nicer representation and some arg checking
+
+/* Wifi Config */
+#define WIFI_SSID "your_SSID"
+#define WIFI_PSK  "your_PSK"
+
+/* MQTT Config */
+#define MQTT_HOST __IP(192, 168, 1, 255)
+#define MQTT_PORT 1883
