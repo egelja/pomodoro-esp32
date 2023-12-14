@@ -1,6 +1,10 @@
+#include "connections.hpp"
 #include "utils.hpp"
 
 #include <Arduino.h>
+
+bool should_reconnect_wifi = false;
+bool should_reconnect_mqtt = false;
 
 void
 setup()
@@ -15,12 +19,16 @@ setup()
     // Log information
     print_chip_debug_info();
 
-    Serial.print("Hello world\n");
+    // Start connections
+    connections::begin(&should_reconnect_wifi, &should_reconnect_mqtt);
 }
 
 void
 loop()
 {
-    while (Serial.available())
-        Serial.write(Serial.read());
+    if (should_reconnect_wifi)
+        connections::wifi::connect();
+
+    if (should_reconnect_mqtt)
+        connections::wifi::connect();
 }
