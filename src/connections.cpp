@@ -1,6 +1,10 @@
 #include "connections.hpp"
 
+#include "AsyncMqttClient/DisconnectReasons.hpp"
+#include "AsyncMqttClient/MessageProperties.hpp"
 #include "config.h"
+#include "IPAddress.h"
+#include "sys/_stdint.h"
 
 #include <Arduino.h>
 #include <AsyncMqttClient.h>
@@ -14,11 +18,9 @@ static bool* should_reconnect_mqtt;
 static TimerHandle_t wifi_reconnect_timer;
 static TimerHandle_t mqtt_reconnect_timer;
 
-namespace connections {
-
 namespace wifi {
 
-void
+static void
 on_event(arduino_event_id_t event)
 {
     log_i("[WiFi-event] event: %d", event);
@@ -29,12 +31,13 @@ on_event(arduino_event_id_t event)
             print_status();
 
             xTimerStop(wifi_reconnect_timer, 0);
+            *should_reconnect_wifi = false;
 
             mqtt::connect();
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            log_i("WiFi lost connection");
+            log_w("WiFi lost connection");
 
             xTimerStop(mqtt_reconnect_timer, 0);  // can't connect to MQTT w/o WiFi
             xTimerStart(wifi_reconnect_timer, 0); // reconnect to WiFi
@@ -44,6 +47,14 @@ on_event(arduino_event_id_t event)
         default: // don't care
             break;
     }
+}
+
+static void
+setup()
+{
+    WiFi.onEvent(wifi::on_event);
+    WiFi.setAutoReconnect(false);
+    WiFi.setAutoConnect(false);
 }
 
 void
@@ -120,19 +131,167 @@ print_status() noexcept
 
 namespace mqtt {
 
+static const IPAddress MQTT_IP(MQTT_HOST);
+
+static AsyncMqttClient mqtt_client;
+
+static on_connect_cb user_connect_cb{};
+static on_message_cb user_message_cb{};
+
+static_assert(
+    sizeof(AsyncMqttClientMessageProperties) <= sizeof(void*),
+    "MQTT msg properties can fit in a register"
+);
+
+/*      CALLBACKS      */
+
+static void
+on_connect(bool session_present)
+{
+    log_i("MQTT Connected, session: %s", session_present ? "YES" : "NO");
+    print_status();
+
+    if (user_connect_cb)
+        user_connect_cb(session_present);
+}
+
+static void
+on_disconnect(AsyncMqttClientDisconnectReason reason)
+{
+    log_w("MQTT Disconnected, reason: %d");
+
+    if (WiFi.isConnected())
+        xTimerStart(mqtt_reconnect_timer, 0);
+}
+
+static void
+on_subscribe(uint16_t packet_id, uint8_t qos)
+{
+    log_i("New MQTT Subscription with ID %d at QOS Level %d", packet_id, qos);
+}
+
+static void
+on_unsubscribe(uint16_t packet_id)
+{
+    log_i("MQTT unsubscribed with ID %d", packet_id);
+}
+
+static void
+on_publish(uint16_t packet_id)
+{
+    log_i("MQTT publish with ID %d", packet_id);
+}
+
+static void
+on_message(
+    char* topic,
+    char* payload,
+    AsyncMqttClientMessageProperties props,
+    size_t len,
+    size_t idx,
+    size_t total
+)
+{
+    log_i("MQTT message received from topic %s (%d/%d bytes)", topic, idx + len, total);
+    log_d("Length: %zu, Index: %zu, Total: %zu", len, idx, total);
+    log_d("Qos: %d, Dup: %d, Retain: %d", props.qos, props.dup, props.retain);
+
+    // TODO: support calling this function multiple times
+    if (idx != 0) {
+        log_e("Long messages not supported");
+        ESP.restart();
+    }
+
+    assert(len == total);
+
+    // Call user callback
+    if (user_message_cb) {
+        String topic_str(topic);
+        user_message_cb(&topic_str, reinterpret_cast<uint8_t*>(payload), len, props);
+    }
+}
+
+static void
+setup()
+{
+    // Setup server
+    mqtt_client.setServer(MQTT_IP, MQTT_PORT);
+
+    // Set callbacks
+    mqtt_client.onConnect(on_connect);
+    mqtt_client.onDisconnect(on_disconnect);
+
+    mqtt_client.onSubscribe(on_subscribe);
+    mqtt_client.onUnsubscribe(on_unsubscribe);
+
+    mqtt_client.onPublish(on_publish);
+    mqtt_client.onMessage(on_message);
+}
+
+/*      PUBLIC FUNCTIONS      */
+
+void
+set_connect_cb(on_connect_cb cb)
+{
+    user_connect_cb = cb;
+}
+
+void
+set_message_cb(on_message_cb cb)
+{
+    user_message_cb = cb;
+}
+
 void
 connect() noexcept
 {
+    log_i("Connecting to MQTT");
     *should_reconnect_mqtt = false;
+
+    mqtt_client.connect();
 }
 
 void
 print_status() noexcept
-{}
+{
+    log_i(
+        "Connected: %s, Client ID: %s",
+        mqtt_client.connected() ? "YES" : "NO",
+        mqtt_client.getClientId()
+    );
+}
+
+uint16_t
+subscribe(const char* topic, uint8_t qos)
+{
+    return mqtt_client.subscribe(topic, qos);
+}
+
+uint16_t
+unsubscribe(const char* topic)
+{
+    return mqtt_client.unsubscribe(topic);
+}
+
+uint16_t
+publish(
+    const char* topic,
+    uint8_t qos,
+    bool retain,
+    const char* payload,
+    size_t length,
+    bool dup,
+    uint16_t message_id
+)
+{
+    return mqtt_client.publish(topic, qos, retain, payload, length, dup, message_id);
+}
 
 } // namespace mqtt
 
 /*****************************************************************************/
+
+namespace connections {
 
 static void
 wifi_timer_cb(TimerHandle_t handle) noexcept
@@ -171,10 +330,11 @@ begin(bool* rec_wifi, bool* rec_mqtt)
         mqtt_timer_cb
     );
 
+    // Setup MQTT
+    mqtt::setup();
+
     // Connect to wifi
-    WiFi.onEvent(wifi::on_event);
-    WiFi.setAutoReconnect(false);
-    WiFi.setAutoConnect(false);
+    wifi::setup();
     wifi::connect();
 }
 
