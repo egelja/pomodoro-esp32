@@ -17,6 +17,11 @@ tasks:
     cmds:
       - pio device monitor
 
+  default:
+    cmds:
+      - task: upload
+      - task: monitor
+
   ide:
     cmds:
       - pio run -t compiledb

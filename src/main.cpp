@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
-void setup()
+void
+setup()
 {
     // Initialize serial communication
     Serial.begin(115200);
@@ -15,5 +16,6 @@ void setup()
 void
 loop()
 {
-    // Nothing...
+    while (Serial.available())
+        Serial.write(Serial.read());
 }
