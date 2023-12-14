@@ -33,7 +33,7 @@ on_event(arduino_event_id_t event)
             xTimerStop(wifi_reconnect_timer, 0);
             *should_reconnect_wifi = false;
 
-            mqtt::connect();
+            xTimerStart(mqtt_reconnect_timer, 0);
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
@@ -192,7 +192,9 @@ on_message(
     size_t total
 )
 {
-    log_i("MQTT message received from topic %s (%d/%d bytes)", topic, idx + len, total);
+    log_i(
+        "MQTT message received from topic \"%s\" (%d/%d bytes)", topic, idx + len, total
+    );
     log_d("Length: %zu, Index: %zu, Total: %zu", len, idx, total);
     log_d("Qos: %d, Dup: %d, Retain: %d", props.qos, props.dup, props.retain);
 
