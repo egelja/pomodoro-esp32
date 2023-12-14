@@ -45,3 +45,8 @@ iso8601_str() noexcept
  * @returns A string describing the reset reason.
  */
 const char* get_reset_reason(int core) noexcept;
+
+/**
+ * Print debug info about our chip.
+ */
+void print_chip_debug_info() noexcept;
