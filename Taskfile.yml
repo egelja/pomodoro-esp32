@@ -1,0 +1,22 @@
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - pio run
+
+  upload:
+    cmds:
+      - pio run --target upload
+
+  upload-fs:
+    cmds:
+      - pio run --target uploadfs --environment esp32dev
+
+  monitor:
+    cmds:
+      - pio device monitor
+
+  ide:
+    cmds:
+      - pio run -t compiledb
