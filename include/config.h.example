@@ -9,3 +9,29 @@
 /* MQTT Config */
 #define MQTT_HOST __IP(192, 168, 1, 255)
 #define MQTT_PORT 1883
+
+/* LED Matrix Config */
+#define MAT_PIN_R1  22
+#define MAT_PIN_G1  23
+#define MAT_PIN_B1  21
+
+#define MAT_PIN_R2  18
+#define MAT_PIN_G2  19
+#define MAT_PIN_B2  5
+
+#define MAT_PIN_A   14
+#define MAT_PIN_B   12
+#define MAT_PIN_C   26
+#define MAT_PIN_D   27
+#define MAT_PIN_E   -1
+
+#define MAT_PIN_CLK 33
+#define MAT_PIN_LAT 25
+#define MAT_PIN_OE  32
+
+#define MAT_RES_X   64
+#define MAT_RES_Y   32
+#define MAT_CHAIN   1
+
+/* Time config */
+#define TIME_TIMEZONE "America/Chicago"
