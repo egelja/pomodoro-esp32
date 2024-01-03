@@ -1,5 +1,9 @@
 #include "utils.hpp"
 
+#include "config.h"
+
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
+
 const char*
 get_reset_reason(int core) noexcept
 {
@@ -88,4 +92,26 @@ print_chip_debug_info() noexcept
     log_d("Core 0 reset reason: %s", get_reset_reason(0));
     if (ESP.getChipCores() >= 2)
         log_d("Core 1 reset reason: %s", get_reset_reason(1));
+}
+
+void
+print_centered(const char* text, uint16_t cursor_y, MatrixPanel_I2S_DMA* display)
+{
+    // Find text size
+    int16_t x, y;
+    uint16_t w, h;
+
+    display->getTextBounds(text, 0, 0, &x, &y, &w, &h);
+
+    log_d("Text starts at (%d, %d) with width %u and height %u", x, y, w, h);
+
+    // Get cursor position
+    assert(x == 0 && y == 0);
+
+    uint16_t cursor_x = (MAT_RES_X - w) / 2;
+    log_d("Drawing at (%u, %u)", cursor_x, cursor_y);
+
+    // Print text
+    display->setCursor(cursor_x, cursor_y);
+    display->print(text);
 }

@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
+
 // espressif/arduino-esp32 - examples/ResetReason/ResetReason.ino
 #ifdef ESP_IDF_VERSION_MAJOR  // IDF 4+
 #  if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
@@ -50,3 +52,14 @@ const char* get_reset_reason(int core) noexcept;
  * Print debug info about our chip.
  */
 void print_chip_debug_info() noexcept;
+
+/**
+ * Print text centered on an LED matrix display.
+ */
+void print_centered(const char* text, uint16_t cursor_y, MatrixPanel_I2S_DMA* display);
+
+inline void
+print_centered(const String& text, uint16_t cursor_y, MatrixPanel_I2S_DMA* display)
+{
+    print_centered(text.c_str(), cursor_y, display);
+}
