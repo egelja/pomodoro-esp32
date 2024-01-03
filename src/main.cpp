@@ -5,6 +5,7 @@
 #include "clock.hpp"
 #include "config.h"
 #include "connections.hpp"
+#include "pomodoro.hpp"
 #include "utils.hpp"
 
 #include <WiFi.h>
@@ -139,7 +140,13 @@ on_mqtt_message(
                 break;
             }
 
+        case 'p':
+            assert(subtopic.substring(0, 8) == "pomodoro");
+            pomodoro::on_mqtt_message(subtopic, payload_str, props);
+            break;
+
         default:
+            log_w("Invalid subtopic %s", subtopic.c_str());
             break;
     }
 }
@@ -209,6 +216,9 @@ setup()
     // Log information
     print_chip_debug_info();
 
+    // Set up eztime
+    ezt::setDebug(INFO);
+
     // Set MQTT callbacks
     mqtt::set_connect_cb(on_mqtt_connect);
     mqtt::set_message_cb(on_mqtt_message);
@@ -269,6 +279,10 @@ loop()
                 local_tz.setLocation(TIME_TIMEZONE);
                 break;
 
+            case 't':
+                ezt::updateNTP();
+                break;
+
             default:
                 break;
         }
@@ -308,12 +322,7 @@ loop()
                 break;
 
             case DISP_MODE_POMODORO:
-                local_tz.dateTime(); // dummy
-
-                // TODO
-                display->clearScreen();
-                print_centered("POMODORO", 12, display);
-
+                pomodoro::draw(display, &local_tz);
                 break;
 
             default:
