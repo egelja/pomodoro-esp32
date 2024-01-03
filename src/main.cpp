@@ -177,7 +177,10 @@ setup_led_matrix()
     HUB75_I2S_CFG config(MAT_RES_X, MAT_RES_Y, MAT_CHAIN, pins);
     config.clkphase = false;
     config.i2sspeed = HUB75_I2S_CFG::HZ_20M;
+
+#ifdef MAT_DOUBLE_BUFF
     config.double_buff = true;
+#endif
 
     // Create display
     display = new MatrixPanel_I2S_DMA(config);
@@ -318,7 +321,9 @@ loop()
                 abort();
         }
 
+#ifdef MAT_DOUBLE_BUFF
         // Show the updates
         display->flipDMABuffer();
+#endif
     }
 }
